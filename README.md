@@ -1,6 +1,8 @@
-# 📌 Nome do Projeto
+# 📌 Loggable
 
 API para autenticação de usuários, fornecendo a opção de criação de dois tipos de usuários (ADMIN e BASIC), onde o ADMIN em um sistema completo teria um nível de acesso maior e o restante dos usuários teriam um nível de acesso limitado.
+
+Back-End para o projeto [Loggable-client](https://github.com/JobsonDeveloper/Loggable-client)
 
 - Ao registrar um usuário, ele é cadastrado no banco, juntamente com sua senha encriptada.
   
@@ -52,5 +54,6 @@ Inicialize a aplicação através do editor de códio de sua preferência (Recom
 # 📖 Documentação da API
 #### Após rodar a aplicação, acesse:
 👉 http://localhost:8081/swagger-ui.html
+
 
 
