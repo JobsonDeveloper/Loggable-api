@@ -32,10 +32,10 @@ Esta API de autenticação e gestão de usuários utiliza Java 21 e Spring Boot,
 ### ▶️ Rodando a aplicação localmente
 #### Clone o repositório
 ```
-git clone https://github.com/JobsonDeveloper/Loggagle-API.git
+git clone https://github.com/JobsonDeveloper/Loggable-api.git
 ```
 ```
-cd Loggagle-API
+cd Loggable-api
 ```
 
 #### Suba o banco com o Docker
@@ -52,4 +52,5 @@ Inicialize a aplicação através do editor de códio de sua preferência (Recom
 # 📖 Documentação da API
 #### Após rodar a aplicação, acesse:
 👉 http://localhost:8081/swagger-ui.html
+
 
