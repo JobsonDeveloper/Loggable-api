@@ -1,9 +1,14 @@
 # 📌 Nome do Projeto
 
-Breve descrição do que o projeto faz e qual problema resolve.
-Exemplo:
+API para autenticação de usuários, fornecendo a opção de criação de dois tipos de usuários (ADMIN e BASIC), onde o ADMIN em um sistema completo teria um nível de acesso maior e o restante dos usuários teriam um nível de acesso limitado.
 
-API de autenticação e gestão de usuários utilizando Java 21 + Spring Boot, com segurança baseada em JWT + OAuth2, documentação via Swagger, persistência em PostgreSQL, conteinerização com Docker e testes unitários com JUnit.
+- Ao registrar um usuário, ele é cadastrado no banco, juntamente com sua senha encriptada.
+  
+- Ao solicitar o Login, a senha guardada no banco é descriptada e comparada com a senha enviada pelo cliente.
+  
+- Em caso de Login bem sucedido, é enviado para o cliente o seu ID juntamente com um token, para ser armazenado no navegador e possibilitar a realização de requisições específicas para usuários autenticados.
+
+Esta API de autenticação e gestão de usuários utiliza Java 21 e Spring Boot, com segurança baseada em JWT e OAuth2, documentação via Swagger, persistência em PostgreSQL, conteinerização com Docker e testes unitários com JUnit.
 
 # 🛠️ Tecnologias Utilizadas
 - ☕ Java 21
@@ -47,3 +52,4 @@ Inicialize a aplicação através do editor de códio de sua preferência (Recom
 # 📖 Documentação da API
 #### Após rodar a aplicação, acesse:
 👉 http://localhost:8081/swagger-ui.html
+
