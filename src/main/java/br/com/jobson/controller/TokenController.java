@@ -39,7 +39,7 @@ public class TokenController {
         this.passwordEncoder = bCryptPasswordEncoder;
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping("/api/user/login")
     @Operation(
             summary = "User login",
             description = "Logs in the user",

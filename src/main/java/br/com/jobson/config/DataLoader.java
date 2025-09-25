@@ -30,7 +30,7 @@ public class DataLoader implements CommandLineRunner {
     public void run(String... args) {
         Role roleAdmin = iRoleRepository.findByName(Role.Values.ADMIN.name());
         List<Role> roles = iRoleRepository.findAll();
-        var userAdmin = iUserRepository.findByEmail("admin@admin.com");
+        var userAdmin = iUserRepository.findByEmail("jobson@admin.com");
 
         // Estava tratando o erro de Role duplicada e detached Role ----
 
@@ -42,10 +42,10 @@ public class DataLoader implements CommandLineRunner {
 
         if (userAdmin.isEmpty()) {
             var user = new User();
-            user.setFirstName("admin");
-            user.setLastName("jobs");
-            user.setEmail("admin@admin.com");
-            user.setPassword(passwordEncoder.encode("123"));
+            user.setFirstName("Jobson");
+            user.setLastName("Oliveira");
+            user.setEmail("jobson@admin.com");
+            user.setPassword(passwordEncoder.encode("@Admin44"));
             user.setRoles(Set.of(roleAdmin));
             iUserRepository.save(user);
             System.out.println("Admin criado com sucesso");
