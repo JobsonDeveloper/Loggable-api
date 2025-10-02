@@ -18,7 +18,7 @@ public class GlobalExceptionHandler extends RuntimeException {
 
     @ExceptionHandler(UserAlreadyRegisteredException.class)
     public ResponseEntity<Map<String, String>> handleUserAlreadyRegisteredException(UserAlreadyRegisteredException exc) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 Map.of("message", exc.getMessage())
         );
     }
@@ -34,6 +34,13 @@ public class GlobalExceptionHandler extends RuntimeException {
     public ResponseEntity<Map<String, String>> handleNotFoundException(NotFoundException exc) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 Map.of("message", exc.getMessage())
+        );
+    }
+
+    @ExceptionHandler(ActionNotAllowedException.class)
+    public ResponseEntity<Map<String, String>> handleActionNotAllowedException(ActionNotAllowedException exc) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+          Map.of("message", exc.getMessage())
         );
     }
 }

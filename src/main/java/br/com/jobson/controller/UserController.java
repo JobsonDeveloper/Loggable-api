@@ -1,32 +1,35 @@
 package br.com.jobson.controller;
 
-import br.com.jobson.controller.dto.user.CreateUserDto;
+import br.com.jobson.controller.dto.swagger.ReturnMessageResponseSwaggerDto;
+import br.com.jobson.controller.dto.swagger.ReturnUserResponseSwaggerDto;
+import br.com.jobson.controller.dto.swagger.TokenResponseSwaggerDto;
+import br.com.jobson.controller.dto.user.GetUserResponseDto;
 import br.com.jobson.domain.Role;
 import br.com.jobson.domain.User;
-import br.com.jobson.exceptions.PasswordMismatchException;
-import br.com.jobson.exceptions.UserAlreadyRegisteredException;
+import br.com.jobson.exceptions.ActionNotAllowedException;
+import br.com.jobson.exceptions.NotFoundException;
 import br.com.jobson.repository.IRoleRepository;
+import br.com.jobson.repository.ISessionRepository;
 import br.com.jobson.repository.IUserRepository;
+import br.com.jobson.util.TokenGenerator;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import ua_parser.Parser;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.security.interfaces.RSAPublicKey;
+import java.util.*;
 
 @RestController
 @Tag(name = "User", description = "User-related operations")
@@ -35,92 +38,128 @@ public class UserController {
     private final IUserRepository iUserRepository;
     private final IRoleRepository iRoleRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final TokenGenerator tokenGenerator;
+    private final JwtDecoder jwtDecoder;
+    private final ISessionRepository iSessionRepository;
+    @Value("${jwt.public.key}")
+    private RSAPublicKey publicKey;
+    @Value("${spring.application.zone}")
+    private String appZone;
+    Parser uaParcer = new Parser();
 
-    public UserController(IUserRepository iUserRepository, IRoleRepository iRoleRepository, BCryptPasswordEncoder passwordEncoder) {
+    public UserController(IUserRepository iUserRepository, IRoleRepository iRoleRepository, BCryptPasswordEncoder passwordEncoder, TokenGenerator tokenGenerator, JwtDecoder jwtDecoder, ISessionRepository iSessionRepository) {
         this.iUserRepository = iUserRepository;
         this.iRoleRepository = iRoleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.tokenGenerator = tokenGenerator;
+        this.jwtDecoder = jwtDecoder;
+        this.iSessionRepository = iSessionRepository;
     }
 
-    @Transactional
-    @PostMapping("/user/register")
     @Operation(
-            summary = "Register user",
-            description = "Register a new user.",
+            summary = "Get a user",
+            description = "Returns a user's information",
             tags = {"User"},
-            parameters = {
-                    @Parameter(
-                            name = "firstname",
-                            description = "User first name",
-                            required = true,
-                            in = ParameterIn.QUERY,
-                            schema = @Schema(type = "string")
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "User login successful",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ReturnUserResponseSwaggerDto.class)
+                            )
                     ),
-                    @Parameter(
-                            name = "lastname",
-                            description = "User last name",
-                            required = true,
-                            in = ParameterIn.QUERY,
-                            schema = @Schema(type = "string")
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ReturnMessageResponseSwaggerDto.class)
+                            )
                     ),
-                    @Parameter(
-                            name = "email",
-                            description = "User email",
-                            required = true,
-                            in = ParameterIn.QUERY,
-                            schema = @Schema(type = "string")
-                    ),
-                    @Parameter(
-                            name = "password",
-                            description = "User password",
-                            required = true,
-                            in = ParameterIn.QUERY,
-                            schema = @Schema(type = "string")
-                    ),
-                    @Parameter(
-                            name = "passwordConfirmation",
-                            description = "User confirmation password",
-                            required = true,
-                            in = ParameterIn.QUERY,
-                            schema = @Schema(type = "string")
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Error verifying token data",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ReturnMessageResponseSwaggerDto.class)
+                            )
                     )
             }
     )
-    public ResponseEntity<Map<String, UUID>> register(@Valid @RequestBody CreateUserDto dto)
-            throws PasswordMismatchException, UserAlreadyRegisteredException {
-        var basicRole = iRoleRepository.findByName(Role.Values.BASIC.name()); // Pegar o tipos de Roles básica
-        var userFromDB = iUserRepository.findByEmail(dto.email()); // Verificar se o usuário já existe
-        var samePassword = dto.password().equals(dto.confirmPassword()); // Compara a senha e a confirmação de senha envada
+    @GetMapping("/api/user/info")
+    public ResponseEntity<GetUserResponseDto> getUser(@RequestHeader("Authorization") String authorization) {
+        String tokenValue;
+        Jwt token;
+        String subject;
 
-        if (userFromDB.isPresent()) {
-            throw new UserAlreadyRegisteredException("User already registered!");
-        } else if (!samePassword) {
-            throw new PasswordMismatchException("The password and password confirmation must be the same!");
+        try {
+            tokenValue = authorization.replace("Bearer ", "").trim();
+            token = jwtDecoder.decode(tokenValue);
+            subject = token.getSubject();
+        } catch (Exception e) {
+            throw new RuntimeException("Error verifying token data!");
         }
 
-        var user = new User(); // Cria o usuário
+        UUID userId = UUID.fromString(subject);
+        User user = iUserRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found!"));
 
-        user.setFirstName(dto.firstName()); // Adiciona o nome do usuário
-        user.setLastName(dto.lastName()); // Adiciona o sobrenome do usuário
-        user.setEmail(dto.email()); // Adiciona o email do usuário
-        user.setPassword(passwordEncoder.encode(dto.password())); // Adiciona a senha já encriptada
-        user.setRoles(Set.of(basicRole)); // Adiciona a Role ao usuário
-
-        var savedUser = iUserRepository.save(user); // Salva o usuário
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", savedUser.getUserId()));
+        return ResponseEntity.status(HttpStatus.OK).body(new GetUserResponseDto(
+                user.getId(),
+                user.getFirstName(), user.getLastName(),
+                user.getEmail(),
+                user.getRoles().stream().map(Role::getName).findFirst()
+        ));
     }
 
-    @Transactional
-    @GetMapping("/user/getUsers")
-    @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
     @Operation(
-            summary = "List the users",
-            description = "List all users in the system",
-            tags = {"User"}
+            summary = "Delete a user",
+            description = "Deletes a user from the system",
+            tags = {"User"},
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "User successfully deleted",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ReturnUserResponseSwaggerDto.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ReturnMessageResponseSwaggerDto.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "When the client does not have permission to delete the user",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ReturnMessageResponseSwaggerDto.class)
+                            )
+                    )
+            }
     )
-    public ResponseEntity<List<User>> getUsers() {
-        var users = iUserRepository.findAll();
-        return ResponseEntity.ok(users);
+    @Transactional
+    @DeleteMapping("/api/user/delete/{id}")
+    public ResponseEntity<String> deleteUser(@RequestHeader("Authorization") String authorization, @PathVariable UUID id) throws ActionNotAllowedException, NotFoundException {
+
+        String tokenValue = authorization.replace("Bearer", "").trim();
+        var token = jwtDecoder.decode(tokenValue);
+        String userId = token.getSubject();
+
+        if (!userId.equals(id.toString())) {
+            throw new ActionNotAllowedException("You don't have permission to delete this user!");
+        }
+
+        User user = iUserRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        user.getRoles().clear();
+        iUserRepository.delete(user);
+        return ResponseEntity.status(HttpStatus.OK).body("User successfully deleted!");
     }
 }

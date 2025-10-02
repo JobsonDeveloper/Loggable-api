@@ -8,8 +8,6 @@ import jakarta.transaction.Transactional;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-import java.util.List;
 import java.util.Set;
 
 @Configuration
@@ -29,10 +27,7 @@ public class DataLoader implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         Role roleAdmin = iRoleRepository.findByName(Role.Values.ADMIN.name());
-        List<Role> roles = iRoleRepository.findAll();
         var userAdmin = iUserRepository.findByEmail("jobson@admin.com");
-
-        // Estava tratando o erro de Role duplicada e detached Role ----
 
         if (roleAdmin == null) {
             roleAdmin = new Role();
@@ -49,7 +44,6 @@ public class DataLoader implements CommandLineRunner {
             user.setRoles(Set.of(roleAdmin));
             iUserRepository.save(user);
             System.out.println("Admin criado com sucesso");
-
         }
     }
 }
