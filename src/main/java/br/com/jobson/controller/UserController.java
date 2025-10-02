@@ -5,6 +5,7 @@ import br.com.jobson.controller.dto.swagger.ReturnUserResponseSwaggerDto;
 import br.com.jobson.controller.dto.swagger.TokenResponseSwaggerDto;
 import br.com.jobson.controller.dto.user.GetUserResponseDto;
 import br.com.jobson.domain.Role;
+import br.com.jobson.domain.Session;
 import br.com.jobson.domain.User;
 import br.com.jobson.exceptions.ActionNotAllowedException;
 import br.com.jobson.exceptions.NotFoundException;
@@ -29,6 +30,8 @@ import org.springframework.web.bind.annotation.*;
 import ua_parser.Parser;
 
 import java.security.interfaces.RSAPublicKey;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 @RestController
@@ -151,15 +154,26 @@ public class UserController {
         String tokenValue = authorization.replace("Bearer", "").trim();
         var token = jwtDecoder.decode(tokenValue);
         String userId = token.getSubject();
+        String sessionIdClaim = token.getClaim("sessionId");
 
         if (!userId.equals(id.toString())) {
             throw new ActionNotAllowedException("You don't have permission to delete this user!");
         }
 
-        User user = iUserRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-        user.getRoles().clear();
-        iUserRepository.delete(user);
-        return ResponseEntity.status(HttpStatus.OK).body("User successfully deleted!");
+        try {
+            UUID sessionId = UUID.fromString(sessionIdClaim);
+            Optional<Session> sessionInfo = iSessionRepository.findById(sessionId);
+            ZonedDateTime logoutTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
+            sessionInfo.get().setLogoutOn(logoutTimestamp);
+            iSessionRepository.save(sessionInfo.get());
+
+            User user = iUserRepository.findById(id)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+            user.getRoles().clear();
+            iUserRepository.delete(user);
+            return ResponseEntity.status(HttpStatus.OK).body("User successfully deleted!");
+        } catch (Exception e) {
+            throw new RuntimeException("Internal server error!");
+        }
     }
 }
