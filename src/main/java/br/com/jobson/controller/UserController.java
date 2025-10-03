@@ -152,7 +152,7 @@ public class UserController {
     public ResponseEntity<String> deleteUser(@RequestHeader("Authorization") String authorization, @PathVariable UUID id) throws ActionNotAllowedException, NotFoundException {
 
         String tokenValue = authorization.replace("Bearer", "").trim();
-        var token = jwtDecoder.decode(tokenValue);
+        Jwt token = jwtDecoder.decode(tokenValue);
         String userId = token.getSubject();
         String sessionIdClaim = token.getClaim("sessionId");
 

@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -100,8 +101,8 @@ public class TokenController {
     )
     @PostMapping("/api/auth/login")
     public ResponseEntity<LoginRegisterResponseDto> login(@RequestBody LoginRequestDto loginRequest, HttpServletRequest request) throws InvalidCredentialsException {
-        var user = iUserRepository.findByEmail(loginRequest.email()); // Usuário que contem o 'email' informado
-        var passwordEncoded = user.get().isLoginCorrect(loginRequest, passwordEncoder); // Verifica se a senha está correta
+        Optional<User> user = iUserRepository.findByEmail(loginRequest.email()); // Usuário que contem o 'email' informado
+        Boolean passwordEncoded = user.get().isLoginCorrect(loginRequest, passwordEncoder); // Verifica se a senha está correta
 
         if (user.isEmpty() || !passwordEncoded) {
             throw new InvalidCredentialsException("Invalid email or password");
@@ -125,11 +126,11 @@ public class TokenController {
 
         Session savedSession = iSessionRepository.save(session);
 
-        var expiresIn = 86400L; // Tempo de duração de um token (300 = 5 minutos)
-        var scopes = user.get().getRoles()
+        Long expiresIn = 86400L; // Tempo de duração de um token (300 = 5 minutos)
+        String scopes = user.get().getRoles()
                 .stream().map(Role::getName)
                 .collect(Collectors.joining(" "));
-        var jwtValue = tokenGenerator.generateToken(
+        String jwtValue = tokenGenerator.generateToken(
                 user.get().getId(),
                 savedSession.getId(),
                 scopes,
@@ -166,7 +167,7 @@ public class TokenController {
     @PostMapping("/api/auth/logout")
     public ResponseEntity<List<String>> logout(@RequestHeader("Authorization") String authorization) {
         String tokenValue = authorization.replace("Bearer ", "").trim();
-        var token = jwtDecoder.decode(tokenValue);
+        Jwt token = jwtDecoder.decode(tokenValue);
         String sessionIdClaim = token.getClaim("sessionId");
 
         try {
@@ -217,9 +218,9 @@ public class TokenController {
     @PostMapping("/api/auth/register")
     public ResponseEntity<LoginRegisterResponseDto> register(@Valid @RequestBody CreateUserDto dto, HttpServletRequest request)
             throws PasswordMismatchException, UserAlreadyRegisteredException {
-        var basicRole = iRoleRepository.findByName(Role.Values.BASIC.name()); // Pegar o tipos de Roles básica
-        var userFromDB = iUserRepository.findByEmail(dto.email()); // Verificar se o usuário já existe
-        var samePassword = dto.password().equals(dto.confirmPassword()); // Compara a senha e a confirmação de senha envada
+        Role basicRole = iRoleRepository.findByName(Role.Values.BASIC.name()); // Pegar o tipos de Roles básica
+        Optional<User> userFromDB = iUserRepository.findByEmail(dto.email()); // Verificar se o usuário já existe
+        Boolean samePassword = dto.password().equals(dto.confirmPassword()); // Compara a senha e a confirmação de senha envada
 
         if (userFromDB.isPresent()) {
             throw new UserAlreadyRegisteredException("User already registered!");
@@ -227,7 +228,7 @@ public class TokenController {
             throw new PasswordMismatchException("The password and password confirmation must be the same!");
         }
 
-        var user = new User(); // Cria o usuário
+        User user = new User(); // Cria o usuário
 
         user.setFirstName(dto.firstName()); // Adiciona o nome do usuário
         user.setLastName(dto.lastName()); // Adiciona o sobrenome do usuário
@@ -235,7 +236,7 @@ public class TokenController {
         user.setPassword(passwordEncoder.encode(dto.password())); // Adiciona a senha já encriptada
         user.setRoles(Set.of(basicRole)); // Adiciona a Role ao usuário
 
-        var savedUser = iUserRepository.save(user); // Salva o usuário
+        User savedUser = iUserRepository.save(user); // Salva o usuário
         UUID userId = savedUser.getId();
         String userAgent = request.getHeader("User-Agent");
         ZonedDateTime loginTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
@@ -254,12 +255,12 @@ public class TokenController {
 
         Session savedSession = iSessionRepository.save(session);
 
-        var now = Instant.now();
-        var expiresIn = 86400L;
-        var scopes = user.getRoles()
+        Instant now = Instant.now();
+        Long expiresIn = 86400L;
+        String scopes = user.getRoles()
                 .stream().map(Role::getName)
                 .collect(Collectors.joining(" "));
-        var jwtValue = tokenGenerator.generateToken(
+        String jwtValue = tokenGenerator.generateToken(
                 user.getId(),
                 savedSession.getId(),
                 scopes,

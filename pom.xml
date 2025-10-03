@@ -11,7 +11,7 @@
 	<groupId>br.com.jobson</groupId>
 	<artifactId>loggable-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Spring Login</name>
+	<name>Loggable API</name>
 	<description>Projeto de login para aprendizado de autenticação de usuários e segurança no Back-End</description>
 	<url/>
 	<licenses>

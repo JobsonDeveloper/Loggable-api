@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @SpringBootTest
-public class UserTest {
+public class UserTests {
     @Autowired
     private IUserRepository iUserRepository;
 
