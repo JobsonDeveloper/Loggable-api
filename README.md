@@ -10,7 +10,7 @@ Back-End para o projeto [Loggable-client](https://github.com/JobsonDeveloper/Log
   
 - Em caso de Login bem sucedido, é enviado para o cliente o seu ID juntamente com um token, para ser armazenado no navegador e possibilitar a realização de requisições específicas para usuários autenticados.
 
-Esta API de autenticação e gestão de usuários utiliza Java 21 e Spring Boot, com segurança baseada em JWT e OAuth2, documentação via Swagger, persistência em PostgreSQL, conteinerização com Docker e testes unitários com JUnit.
+Esta API de autenticação e gestão de usuários utiliza Java 21 e Spring Boot, com segurança baseada em JWT e OAuth2, documentação via Swagger, persistência em PostgreSQL, conteinerização com Docker, testes unitários e de integração com JUnit e testes de cobertura com JaCoCo.
 
 # 🛠️ Tecnologias Utilizadas
 - ☕ Java 21
@@ -24,6 +24,7 @@ Esta API de autenticação e gestão de usuários utiliza Java 21 e Spring Boot,
 - 🐳 Docker
 - 📖 Swagger / OpenAPI
 - 🧪 JUnit
+- 🔍 JaCoCo
 
 # 🚀 Como Executar o Projeto
 ### ✅ Pré-requisitos
@@ -55,5 +56,12 @@ Inicialize a aplicação através do editor de códio de sua preferência (Recom
 #### Após rodar a aplicação, acesse:
 👉 http://localhost:8081/swagger-ui.html
 
-
-
+# Realizando o teste de integração
+#### No terminal da IDE, execute o comando para gerar a documentação html:
+```
+mvn clean test
+```
+#### Depois, execute o comando para abrir a documentação no navegador:
+```
+start target\site\jacoco\index.html
+```
