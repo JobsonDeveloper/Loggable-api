@@ -56,7 +56,11 @@ Inicialize a aplicação através do editor de códio de sua preferência (Recom
 #### Após rodar a aplicação, acesse:
 👉 http://localhost:8081/swagger-ui.html
 
-# Realizando o teste de integração
+## Visualização
+
+<img width="921" height="808" alt="image" src="https://github.com/user-attachments/assets/088431d8-0635-47d2-b10a-33cd8b8a88ba" />
+
+# Realizando o teste de cobertura
 #### No terminal da IDE, execute o comando para gerar a documentação html:
 ```
 mvn clean test
@@ -65,3 +69,11 @@ mvn clean test
 ```
 start target\site\jacoco\index.html
 ```
+
+## Visualização
+
+<img width="1919" height="433" alt="image" src="https://github.com/user-attachments/assets/d3842b0d-b7d3-4cd9-9421-ec6f8370c4ed" />
+
+# Visualização dos testes unitários e de integração
+
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/47ee1071-09ca-474f-8072-ebae868c8022" />
