@@ -81,3 +81,7 @@ start target\site\jacoco\index.html
 # Testes unitários e de integração
 
 <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/47ee1071-09ca-474f-8072-ebae868c8022" />
+
+# Teste E2E
+
+![2025-10-13 15-35-55](https://github.com/user-attachments/assets/a460d4c9-e6c1-4070-842a-d786eb4399ea)
