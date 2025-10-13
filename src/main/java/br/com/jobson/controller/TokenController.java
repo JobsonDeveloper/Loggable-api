@@ -26,6 +26,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 
 import jakarta.validation.Valid;
+import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -217,10 +218,18 @@ public class TokenController {
     @Transactional
     @PostMapping("/api/auth/register")
     public ResponseEntity<LoginRegisterResponseDto> register(@Valid @RequestBody CreateUserDto dto, HttpServletRequest request)
-            throws PasswordMismatchException, UserAlreadyRegisteredException {
+            throws PasswordMismatchException, UserAlreadyRegisteredException, BadRequestException {
+        String email = dto.email();
+        String password = dto.password();
+        String confirmPassword = dto.confirmPassword();
+
         Role basicRole = iRoleRepository.findByName(Role.Values.BASIC.name()); // Pegar o tipos de Roles básica
-        Optional<User> userFromDB = iUserRepository.findByEmail(dto.email()); // Verificar se o usuário já existe
-        Boolean samePassword = dto.password().equals(dto.confirmPassword()); // Compara a senha e a confirmação de senha envada
+        Optional<User> userFromDB = iUserRepository.findByEmail(email); // Verificar se o usuário já existe
+        Boolean samePassword = password.equals(confirmPassword); // Compara a senha e a confirmação de senha envada
+
+        if(email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+            throw new BadRequestException("Invalid data!");
+        }
 
         if (userFromDB.isPresent()) {
             throw new UserAlreadyRegisteredException("User already registered!");
