@@ -1,6 +1,7 @@
 # 📌 Loggable
 
-API para autenticação de usuários, fornecendo a opção de criação de dois tipos de usuários (ADMIN e BASIC), onde o ADMIN em um sistema completo teria um nível de acesso maior e o restante dos usuários teriam um nível de acesso limitado.
+API para autenticação de usuários, fornecendo os recursos de cadastro, login, logout e exclusão de perfil.
+Validando o usuário via Token por meio da utilização do JWT + OAuth2, garantindo que as operações sejam realizadas somente por quem tem permissão para tal.
 
 Back-End para o projeto [Loggable-client](https://github.com/JobsonDeveloper/Loggable-client)
 
@@ -77,3 +78,4 @@ start target\site\jacoco\index.html
 # Visualização dos testes unitários e de integração
 
 <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/47ee1071-09ca-474f-8072-ebae868c8022" />
+
