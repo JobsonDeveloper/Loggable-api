@@ -24,7 +24,10 @@ Esta API de autenticação e gestão de usuários utiliza Java 21 e Spring Boot,
 - 🐘 PostgreSQL
 - 🐳 Docker
 - 📖 Swagger / OpenAPI
-- 🧪 JUnit
+- 🧪 Testes
+  - JUnit (Unitários e Integração)
+  - Testcontainers (Banco real para testes E2E)
+  - Spring Boot Test (E2E)
 - 🔍 JaCoCo
 
 # 🚀 Como Executar o Projeto
@@ -75,7 +78,6 @@ start target\site\jacoco\index.html
 
 <img width="1919" height="433" alt="image" src="https://github.com/user-attachments/assets/d3842b0d-b7d3-4cd9-9421-ec6f8370c4ed" />
 
-# Visualização dos testes unitários e de integração
+# Testes unitários e de integração
 
 <img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/47ee1071-09ca-474f-8072-ebae868c8022" />
-
