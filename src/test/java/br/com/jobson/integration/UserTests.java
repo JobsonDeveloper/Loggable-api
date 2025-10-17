@@ -1,4 +1,4 @@
-package br.com.jobson;
+package br.com.jobson.integration;
 
 import br.com.jobson.domain.Role;
 import br.com.jobson.domain.User;

@@ -2,15 +2,11 @@ package br.com.jobson.controller;
 
 import br.com.jobson.controller.dto.swagger.TokenResponseSwaggerDto;
 import br.com.jobson.controller.dto.swagger.ReturnMessageResponseSwaggerDto;
-import br.com.jobson.controller.dto.user.CreateUserDto;
-import br.com.jobson.controller.dto.user.LoginRegisterResponseDto;
-import br.com.jobson.controller.dto.user.LoginRequestDto;
+import br.com.jobson.controller.dto.user.*;
 import br.com.jobson.domain.Role;
 import br.com.jobson.domain.Session;
 import br.com.jobson.domain.User;
-import br.com.jobson.exceptions.InvalidCredentialsException;
-import br.com.jobson.exceptions.PasswordMismatchException;
-import br.com.jobson.exceptions.UserAlreadyRegisteredException;
+import br.com.jobson.exceptions.*;
 import br.com.jobson.repository.IRoleRepository;
 import br.com.jobson.repository.ISessionRepository;
 import br.com.jobson.repository.IUserRepository;
@@ -26,7 +22,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 
 import jakarta.validation.Valid;
-import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +37,6 @@ import org.springframework.web.bind.annotation.RestController;
 import ua_parser.Client;
 import ua_parser.Parser;
 
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -101,32 +95,20 @@ public class TokenController {
             }
     )
     @PostMapping("/api/auth/login")
-    public ResponseEntity<LoginRegisterResponseDto> login(@RequestBody LoginRequestDto loginRequest, HttpServletRequest request) throws InvalidCredentialsException {
+    public ResponseEntity<LoginRegisterResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequest, HttpServletRequest request) {
         Optional<User> user = iUserRepository.findByEmail(loginRequest.email()); // Usuário que contem o 'email' informado
-        Boolean passwordEncoded = user.get().isLoginCorrect(loginRequest, passwordEncoder); // Verifica se a senha está correta
 
-        if (user.isEmpty() || !passwordEncoded) {
-            throw new InvalidCredentialsException("Invalid email or password");
+        if (!user.isPresent()) {
+            throw new UserNotFoundException();
         }
 
-        UUID userId = user.get().getId();
-        String userAgent = request.getHeader("User-Agent");
-        ZonedDateTime loginTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
-        Client userDevice = uaParcer.parse(userAgent.toString());
-        String userIp = request.getHeader("X-Forwarded-For");
-        if (userIp == null || userIp.isBlank()) {
-            userIp = request.getRemoteAddr();
+        Boolean truePassword = user.get().isLoginCorrect(loginRequest, passwordEncoder); // Verifica se a senha está correta
+
+        if (!truePassword) {
+            throw new InvalidLoginCredentialsException();
         }
 
-        Session session = new Session();
-        session.setIpAddress(userIp);
-        session.setLoginOn(loginTimestamp);
-        session.setUserAgent(userAgent);
-        session.setUserDevice(userDevice.os.family);
-        session.setUserId(userId);
-
-        Session savedSession = iSessionRepository.save(session);
-
+        Session savedSession = this.createSession(user.get(), request);
         Long expiresIn = 86400L; // Tempo de duração de um token (300 = 5 minutos)
         String scopes = user.get().getRoles()
                 .stream().map(Role::getName)
@@ -166,22 +148,23 @@ public class TokenController {
     )
     @Transactional
     @PostMapping("/api/auth/logout")
-    public ResponseEntity<List<String>> logout(@RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<MessageResponseDto> logout(@RequestHeader("Authorization") String authorization) {
         String tokenValue = authorization.replace("Bearer ", "").trim();
         Jwt token = jwtDecoder.decode(tokenValue);
         String sessionIdClaim = token.getClaim("sessionId");
 
-        try {
-            UUID sessionId = UUID.fromString(sessionIdClaim);
-            Optional<Session> sessionInfo = iSessionRepository.findById(sessionId);
-            ZonedDateTime logoutTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
-            sessionInfo.get().setLogoutOn(logoutTimestamp);
-            iSessionRepository.save(sessionInfo.get());
+        UUID sessionId = UUID.fromString(sessionIdClaim);
+        Optional<Session> sessionInfo = iSessionRepository.findById(sessionId);
 
-            return ResponseEntity.status(HttpStatus.OK).body(List.of("message", "Logout successfully"));
-        } catch (Exception e) {
-            throw new RuntimeException("Internal server error!");
+        if (!sessionInfo.isPresent()) {
+            throw new SessionNotFoundException();
         }
+
+        ZonedDateTime logoutTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
+        sessionInfo.get().setLogoutOn(logoutTimestamp);
+        iSessionRepository.save(sessionInfo.get());
+
+        return ResponseEntity.status(HttpStatus.OK).body(new MessageResponseDto("Logout successfully"));
     }
 
     @Operation(
@@ -218,7 +201,10 @@ public class TokenController {
     @Transactional
     @PostMapping("/api/auth/register")
     public ResponseEntity<LoginRegisterResponseDto> register(@Valid @RequestBody CreateUserDto dto, HttpServletRequest request)
-            throws PasswordMismatchException, UserAlreadyRegisteredException, BadRequestException {
+            throws PasswordMismatchException, UserAlreadyRegisteredException {
+
+        String firstName = dto.firstName();
+        String lastName = dto.lastName();
         String email = dto.email();
         String password = dto.password();
         String confirmPassword = dto.confirmPassword();
@@ -227,44 +213,22 @@ public class TokenController {
         Optional<User> userFromDB = iUserRepository.findByEmail(email); // Verificar se o usuário já existe
         Boolean samePassword = password.equals(confirmPassword); // Compara a senha e a confirmação de senha envada
 
-        if(email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-            throw new BadRequestException("Invalid data!");
-        }
-
         if (userFromDB.isPresent()) {
-            throw new UserAlreadyRegisteredException("User already registered!");
+            throw new UserAlreadyRegisteredException();
         } else if (!samePassword) {
-            throw new PasswordMismatchException("The password and password confirmation must be the same!");
+            throw new PasswordMismatchException();
         }
 
         User user = new User(); // Cria o usuário
-
-        user.setFirstName(dto.firstName()); // Adiciona o nome do usuário
-        user.setLastName(dto.lastName()); // Adiciona o sobrenome do usuário
-        user.setEmail(dto.email()); // Adiciona o email do usuário
-        user.setPassword(passwordEncoder.encode(dto.password())); // Adiciona a senha já encriptada
+        user.setFirstName(firstName); // Adiciona o nome do usuário
+        user.setLastName(lastName); // Adiciona o sobrenome do usuário
+        user.setEmail(email); // Adiciona o email do usuário
+        user.setPassword(passwordEncoder.encode(password)); // Adiciona a senha já encriptada
         user.setRoles(Set.of(basicRole)); // Adiciona a Role ao usuário
 
         User savedUser = iUserRepository.save(user); // Salva o usuário
-        UUID userId = savedUser.getId();
-        String userAgent = request.getHeader("User-Agent");
-        ZonedDateTime loginTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
-        Client userDevice = uaParcer.parse(userAgent.toString());
-        String userIp = request.getHeader("X-Forwarded-For");
-        if (userIp == null || userIp.isBlank()) {
-            userIp = request.getRemoteAddr();
-        }
+        Session savedSession = this.createSession(savedUser, request);
 
-        Session session = new Session();
-        session.setIpAddress(userIp);
-        session.setLoginOn(loginTimestamp);
-        session.setUserAgent(userAgent);
-        session.setUserDevice(userDevice.os.family);
-        session.setUserId(userId);
-
-        Session savedSession = iSessionRepository.save(session);
-
-        Instant now = Instant.now();
         Long expiresIn = 86400L;
         String scopes = user.getRoles()
                 .stream().map(Role::getName)
@@ -277,5 +241,27 @@ public class TokenController {
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new LoginRegisterResponseDto(jwtValue, expiresIn));
+    }
+
+    private Session createSession(User user, HttpServletRequest request) {
+        UUID userId = user.getId();
+        String userAgent = request.getHeader("User-Agent");
+        ZonedDateTime loginTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
+        Client userDevice = uaParcer.parse(userAgent.toString());
+        String userIp = request.getHeader("X-Forwarded-For");
+
+        if (userIp == null || userIp.isBlank()) {
+            userIp = request.getRemoteAddr();
+        }
+
+        Session session = new Session();
+        session.setIpAddress(userIp);
+        session.setLoginOn(loginTimestamp);
+        session.setUserAgent(userAgent);
+        session.setUserDevice(userDevice.os.family);
+        session.setUserId(userId);
+        Session savedSession = iSessionRepository.save(session);
+
+        return savedSession;
     }
 }

@@ -1,10 +1,10 @@
 package br.com.jobson.exceptions;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
+public class PasswordMismatchException extends RuntimeException {
+    public PasswordMismatchException() {
+        super("The password and password confirmation must be the same!");
+    }
 
-@ResponseStatus(HttpStatus.BAD_REQUEST)
-public class PasswordMismatchException extends Exception {
     public PasswordMismatchException(String message) {
         super(message);
     }

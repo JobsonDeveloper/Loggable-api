@@ -1,16 +1,13 @@
-package br.com.jobson;
+package br.com.jobson.unit;
 
-import br.com.jobson.domain.Role;
 import br.com.jobson.util.TokenGenerator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
-import java.util.Set;
 import java.util.UUID;
 
 @SpringBootTest

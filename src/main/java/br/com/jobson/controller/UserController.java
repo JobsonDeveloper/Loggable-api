@@ -2,13 +2,14 @@ package br.com.jobson.controller;
 
 import br.com.jobson.controller.dto.swagger.ReturnMessageResponseSwaggerDto;
 import br.com.jobson.controller.dto.swagger.ReturnUserResponseSwaggerDto;
-import br.com.jobson.controller.dto.swagger.TokenResponseSwaggerDto;
 import br.com.jobson.controller.dto.user.GetUserResponseDto;
+import br.com.jobson.controller.dto.user.MessageResponseDto;
 import br.com.jobson.domain.Role;
 import br.com.jobson.domain.Session;
 import br.com.jobson.domain.User;
-import br.com.jobson.exceptions.ActionNotAllowedException;
-import br.com.jobson.exceptions.NotFoundException;
+import br.com.jobson.exceptions.SessionNotFoundException;
+import br.com.jobson.exceptions.UnauthorizedActionException;
+import br.com.jobson.exceptions.UserNotFoundException;
 import br.com.jobson.repository.IRoleRepository;
 import br.com.jobson.repository.ISessionRepository;
 import br.com.jobson.repository.IUserRepository;
@@ -21,7 +22,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -96,17 +96,14 @@ public class UserController {
         Jwt token;
         String subject;
 
-        try {
-            tokenValue = authorization.replace("Bearer ", "").trim();
-            token = jwtDecoder.decode(tokenValue);
-            subject = token.getSubject();
-        } catch (Exception e) {
-            throw new RuntimeException("Error verifying token data!");
-        }
+        tokenValue = authorization.replace("Bearer ", "").trim();
+        token = jwtDecoder.decode(tokenValue);
+        subject = token.getSubject();
 
         UUID userId = UUID.fromString(subject);
-        User user = iUserRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found!"));
+        User user = iUserRepository.findById(userId).orElseThrow(
+                () -> new UserNotFoundException()
+        );
 
         return ResponseEntity.status(HttpStatus.OK).body(new GetUserResponseDto(
                 user.getId(),
@@ -149,31 +146,31 @@ public class UserController {
     )
     @Transactional
     @DeleteMapping("/api/user/delete/{id}")
-    public ResponseEntity<String> deleteUser(@RequestHeader("Authorization") String authorization, @PathVariable UUID id) throws ActionNotAllowedException, NotFoundException {
-
+    public ResponseEntity<MessageResponseDto> deleteUser(@RequestHeader("Authorization") String authorization, @PathVariable UUID id) {
         String tokenValue = authorization.replace("Bearer", "").trim();
         Jwt token = jwtDecoder.decode(tokenValue);
         String userId = token.getSubject();
         String sessionIdClaim = token.getClaim("sessionId");
 
         if (!userId.equals(id.toString())) {
-            throw new ActionNotAllowedException("You don't have permission to delete this user!");
+            throw new UnauthorizedActionException();
         }
 
-        try {
-            UUID sessionId = UUID.fromString(sessionIdClaim);
-            Optional<Session> sessionInfo = iSessionRepository.findById(sessionId);
-            ZonedDateTime logoutTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
-            sessionInfo.get().setLogoutOn(logoutTimestamp);
-            iSessionRepository.save(sessionInfo.get());
+        UUID sessionId = UUID.fromString(sessionIdClaim);
+        Optional<Session> sessionInfo = iSessionRepository.findById(sessionId);
 
-            User user = iUserRepository.findById(id)
-                    .orElseThrow(() -> new NotFoundException("User not found"));
-            user.getRoles().clear();
-            iUserRepository.delete(user);
-            return ResponseEntity.status(HttpStatus.OK).body("User successfully deleted!");
-        } catch (Exception e) {
-            throw new RuntimeException("Internal server error!");
+        if(sessionInfo.isEmpty()) {
+            throw new SessionNotFoundException();
         }
+
+        ZonedDateTime logoutTimestamp = ZonedDateTime.now(ZoneId.of(appZone));
+        sessionInfo.get().setLogoutOn(logoutTimestamp);
+        iSessionRepository.save(sessionInfo.get());
+
+        User user = iUserRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException());
+        user.getRoles().clear();
+        iUserRepository.delete(user);
+        return ResponseEntity.status(HttpStatus.OK).body(new MessageResponseDto("User successfully deleted!"));
     }
 }
